@@ -1,0 +1,164 @@
+# Import necessary libraries
+from tkinter import *
+from tkinter import messagebox
+import sqlite3 as sql
+
+# Function to add a new task to the list and database
+def add_task():  
+    task_string = task_field.get()
+    if len(task_string) == 0:
+        messagebox.showinfo('Error', 'Field is Empty.')
+    else:    
+        tasks.append(task_string)
+        the_cursor.execute('insert into tasks values (?)', (task_string,))
+        list_update()
+        task_field.delete(0, 'end')
+
+# Function to update the task listbox to show all tasks from the local list
+def list_update():    
+    clear_list()
+    for task in tasks:    
+        task_listbox.insert('end', task)
+
+# Function to delete a selected task from the list and database
+def delete_task():  
+    try:  
+        the_value = task_listbox.get(task_listbox.curselection())
+        if the_value in tasks:  
+            tasks.remove(the_value)
+            list_update()
+            the_cursor.execute('delete from tasks where title = ?', (the_value,))
+    except:   
+        messagebox.showinfo('Error', 'No Task Selected. Cannot Delete.')
+
+# Function to delete all tasks from the list and database
+def delete_all_tasks():  
+    message_box = messagebox.askyesno('Delete All', 'Are you sure?')
+    if message_box:
+        while(len(tasks) != 0):    
+            tasks.pop()
+        the_cursor.execute('delete from tasks')
+        list_update()
+
+# Function to clear all tasks from the listbox
+def clear_list():   
+    task_listbox.delete(0, 'end')
+
+# Function to close the application and print current tasks
+def close():    
+    print(tasks)
+    guiWindow.destroy()
+
+# Function to retrieve tasks from the database on startup
+def retrieve_database():    
+    while(len(tasks) != 0):    
+        tasks.pop()
+    for row in the_cursor.execute('select title from tasks'):
+        tasks.append(row[0])
+
+# Main function to create the GUI window and initialize the application
+if __name__ == "__main__":   
+    # Initialize GUI window
+    guiWindow = Tk()   
+    guiWindow.title("To-Do List")  
+    guiWindow.geometry("665x400+550+250")   
+    guiWindow.resizable(0, 0)  
+    guiWindow.configure(bg="#F2E4D4")  # Background color
+
+    # Setup SQLite database connection and table
+    the_connection = sql.connect('listOfTasks.db')   
+    the_cursor = the_connection.cursor()   
+    the_cursor.execute('create table if not exists tasks (title text)')
+
+    tasks = [] 
+        
+    # Frame for task entry and buttons
+    functions_frame = Frame(guiWindow, bg="#D1A3A4")
+    functions_frame.pack(side="top", expand=True, fill="both")
+
+    # Label for task entry prompt
+    task_label = Label(
+        functions_frame, text="To-Do List\nEnter the Task Title:",  
+        font=("Arial", "14", "italic"),  
+        background="#D1A3A4", 
+        foreground="#5D3FD3"
+    )    
+    task_label.place(x=20, y=30)
+
+    # Task entry field
+    task_field = Entry(
+        functions_frame,  
+        font=("Arial", "12"),  
+        width=40,  
+        foreground="darkblue",
+        background="#F5F5F5",  
+    )    
+    task_field.place(x=180, y=30)
+
+    # Add task button
+    add_button = Button(
+        functions_frame,  
+        text="Add",  
+        width=6,
+        bg='#6C3483', font=("Arial", "12", "bold"),
+        command=add_task
+    )
+
+    # Remove selected task button
+    del_button = Button(
+        functions_frame,  
+        text="Remove",  
+        width=8,
+        bg='#6C3483', font=("Arial", "12", "bold"),
+        command=delete_task
+    )
+
+    # Delete all tasks button
+    del_all_button = Button(
+        functions_frame,  
+        text="Delete All",  
+        width=8,
+        font=("Arial", "12", "bold"),
+        bg='#6C3483',
+        command=delete_all_tasks
+    )
+
+    # Exit button
+    exit_button = Button(
+        functions_frame,  
+        text="Exit / Close",  
+        width=50,
+        bg='#6C3483', font=("Arial", "12", "bold"),
+        command=close
+    )    
+
+    # Place buttons in the frame
+    add_button.place(x=60, y=80)
+    del_button.place(x=250, y=80)
+    del_all_button.place(x=460, y=80)
+    exit_button.place(x=17, y=330)
+
+    # Listbox to display tasks
+    task_listbox = Listbox(
+        functions_frame,  
+        width=65,  
+        height=10,  
+        font="bold",
+        selectmode='SINGLE',  
+        background="#F8EFBA",
+        foreground="#1E8449",    
+        selectbackground="#F4D03F",  
+        selectforeground="black"
+    )    
+    task_listbox.place(x=17, y=140)
+
+    # Initialize the task list from database and update listbox
+    retrieve_database()  
+    list_update()
+
+    # Run the GUI main loop
+    guiWindow.mainloop()    
+
+    # Commit changes to database and close connection after GUI closes
+    the_connection.commit()  
+    the_cursor.close()
